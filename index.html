@@ -3,71 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="CacaPalavras — jogo casual diário de adivinhação de palavras">
-  <title>CacaPalavras</title>
+  <meta name="description" content="Encontre peças do motor escondidas no caça-palavras.">
+  <title>CaçaPalavras</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
-  <div class="app" id="app">
+  <main class="app" id="main-content">
+    <header class="app-header">
+      <p class="eyebrow">Desafio diário</p>
+      <h1>CaçaPalavras</h1>
+      <p class="tagline">Encontre todas as palavras escondidas!</p>
+    </header>
 
-    <!-- TELA 1 / INICIAL -->
-    <section class="screen" id="screen-home" aria-labelledby="home-title">
-      <h1 id="home-title">CacaPalavras</h1>
-      <p class="tagline">A palavra do dia é uma aventura!</p>
-
-      <section class="panel how-it-works" aria-labelledby="how-title">
-        <h2 id="how-title">Como funciona</h2>
-        <p>Adivinhe a palavra secreta do dia em até 6 tentativas!</p>
-        <p>Cada chute certo ou errado te dá uma dica de letras.</p>
-      </section>
-
-      <section class="panel today-panel" aria-labelledby="today-title">
-        <h2 id="today-title">Tema de hoje</h2>
-        <p class="theme-chip" id="theme-chip">🦁 Animais</p>
-        <p class="word-length">A palavra de hoje tem 5 letras</p>
-      </section>
-
-      <section class="stats" aria-labelledby="stats-title">
-        <h2 id="stats-title">Seu progresso</h2>
-        <div class="stats-grid">
-          <div class="stat"><p class="stat-value" id="stat-streak">0</p><p class="stat-label">Streak</p></div>
-          <div class="stat"><p class="stat-value" id="stat-best">0</p><p class="stat-label">Melhor streak</p></div>
-          <div class="stat"><p class="stat-value" id="stat-wins">0</p><p class="stat-label">Vitórias</p></div>
-          <div class="stat"><p class="stat-value" id="stat-games">0</p><p class="stat-label">Partidas</p></div>
-        </div>
-      </section>
-
-      <button class="btn btn-primary btn-lg" id="btn-play" type="button">Jogar hoje!</button>
-    </section>
-
-    <!-- TELA 2 / JOGO -->
-    <section class="screen" id="screen-game" hidden aria-labelledby="game-title">
-      <button class="btn btn-ghost back-home" id="btn-home" type="button">← Voltar ao início</button>
-      <h2 id="game-title">Tema</h2>
-      <p class="word-length">5 letras · 6 tentativas</p>
-      <div class="tiles" id="tiles" role="group" aria-label="Feedback das tentativas"></div>
-      <div class="guess-row">
-        <input id="input-guess" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="5" placeholder="?????" aria-label="Sua tentativa, com 5 letras" />
-        <button class="btn btn-primary" id="btn-submit" type="button">Descobrir</button>
+    <section class="panel" aria-labelledby="words-title">
+      <div class="section-heading">
+        <h2 id="words-title">Palavras para encontrar</h2>
+        <p id="found-count" class="found-count"></p>
       </div>
-      <p class="attempts">0 de 6 tentativas</p>
-      <div id="feedback-status" class="sr-only" aria-live="polite"></div>
+      <ul class="word-list" id="word-list" aria-label="Palavras do desafio"></ul>
     </section>
 
-    <!-- TELA 3 / RESULTADO -->
-    <section class="screen" id="screen-result" hidden aria-labelledby="result-title">
-      <div class="result-card">
-        <h2 id="result-title">Resultado</h2>
-        <div class="tiles" id="reveal-tiles" role="group" aria-label="Palavra correta"></div>
-        <p class="result-attempts" id="result-attempts"></p>
-        <div class="result-actions">
-          <button class="btn btn-primary" id="btn-result-home" type="button">Voltar ao início</button>
-        </div>
-      </div>
+    <section class="game-panel" aria-labelledby="grid-title">
+      <h2 id="grid-title" class="sr-only">Grade do caça-palavras</h2>
+      <p class="instructions">Arraste sobre as letras ou toque na primeira e na última letra.</p>
+      <div class="word-grid" id="word-grid" role="group" aria-label="Grade de letras do caça-palavras"></div>
+      <p id="game-status" class="game-status" aria-live="polite">Selecione uma palavra para começar.</p>
     </section>
 
-  </div>
+  </main>
 
   <script src="js/data.js"></script>
   <script src="js/storage.js"></script>

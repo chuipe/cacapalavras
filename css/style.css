@@ -1,17 +1,8 @@
-/* ============================================================
-   CacaPalavras — estilos
-   Design escolhido: síntese do Protótipo 2 ("Acessível e Clara")
-   com refinamentos visuais do Protótipo 3 ("Temático Moderno").
-   Mobile-first, alto contraste, tipografia legível, botões grandes.
-   ============================================================ */
-
 :root {
-  --bg: #ffffff;
-  --ink: #111111;
+  --bg: #000000;
+  --ink: #ffffff;
   --green: #0b5d33;
   --green-contrast: #ffffff;
-  --yellow: #e8a020;
-  --gray: #6b6b6b;
   --tile-empty: #eeeeee;
   --focus: #005fcc;
   --font: ui-rounded, "SF Pro Rounded", "Baloo 2", "Nunito", system-ui, -apple-system, sans-serif;
@@ -24,294 +15,217 @@
 html,
 body {
   margin: 0;
-  padding: 0;
+  min-height: 100%;
 }
 
 body {
-  font-family: var(--font);
-  background: #f4f7f4;
+  background: #000000;
   color: var(--ink);
+  font-family: var(--font);
   font-size: 18px;
   line-height: 1.45;
 }
 
 .app {
-  max-width: 430px;
-  margin: 0 auto;
+  max-width: 560px;
   min-height: 100dvh;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
   background: var(--bg);
-  padding: 20px 16px 48px;
 }
 
-/* ---------- Telas ---------- */
-
-.screen {
-  display: none;
+.app-header {
+  text-align: center;
 }
 
-.screen[hidden] {
-  display: none !important;
+.eyebrow {
+  margin: 0 0 4px;
+  color: #d0d0d0;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
-
-.screen.is-active {
-  display: block;
-}
-
-/* ---------- Tipografia ---------- */
 
 h1 {
-  font-size: 34px;
+  margin: 0;
+  font-size: clamp(32px, 8vw, 42px);
   line-height: 1.1;
-  margin: 8px 0 4px;
 }
 
 h2 {
-  font-size: 24px;
+  margin: 0;
+  font-size: 22px;
   line-height: 1.25;
-  margin: 20px 0 8px;
 }
 
 .tagline {
-  font-size: 20px;
-  color: #333333;
-  margin: 0 0 12px;
+  margin: 8px 0 16px;
+  color: #e0e0e0;
+  font-size: 19px;
+}
+
+.panel,
+.game-panel {
+  margin: 22px 0;
 }
 
 .panel {
-  background: #f4f7f4;
+  padding: 18px;
   border-radius: 16px;
-  padding: 16px;
-  margin: 16px 0;
+  background: #171717;
 }
 
-.panel h2 {
-  margin-top: 0;
+.section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.panel p {
-  font-size: 18px;
-  margin: 8px 0;
-}
-
-.word-length {
-  font-size: 18px;
+.found-count {
+  flex: 0 0 auto;
+  margin: 0;
+  color: #d0d0d0;
+  font-size: 16px;
   font-weight: 700;
 }
 
-/* ---------- Botões ---------- */
+.word-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
 
-.btn {
-  font-family: var(--font);
-  font-size: 22px;
-  font-weight: 700;
-  border: none;
+.word-item {
+  padding: 6px 12px;
+  border: 2px solid #555555;
   border-radius: 999px;
-  min-height: 56px;
-  padding: 14px 28px;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.btn-primary {
-  background: var(--green);
-  color: var(--green-contrast);
-}
-
-.btn-secondary {
-  background: var(--bg);
-  color: var(--green);
-  border: 3px solid var(--green);
-}
-
-.btn-lg {
-  width: 100%;
-  font-size: 24px;
-  min-height: 64px;
-}
-
-.btn-ghost {
-  background: transparent;
-  color: var(--ink);
-  font-size: 18px;
-  font-weight: 700;
-  min-height: 48px;
-  padding: 10px 16px;
-}
-
-/* ---------- Chip de tema ---------- */
-
-.theme-chip {
-  display: inline-block;
-  padding: 10px 20px;
-  border-radius: 999px;
-  color: #ffffff;
-  font-size: 20px;
+  background: #292929;
+  font-size: 16px;
   font-weight: 800;
-  background: var(--theme, var(--green));
+  letter-spacing: 0.06em;
 }
 
-/* ---------- Estatísticas ---------- */
+.word-item.is-found {
+  border-color: var(--green);
+  background: var(--green);
+  color: #ffffff;
+  text-decoration: line-through;
+}
+
+.instructions {
+  margin: 0 0 12px;
+  color: #e0e0e0;
+  text-align: center;
+}
+
+.word-grid {
+  display: grid;
+  gap: 3px;
+  width: min(100%, 440px);
+  margin: 0 auto;
+  padding: 8px;
+  border: 2px solid #444444;
+  border-radius: 14px;
+  background: #171717;
+  touch-action: none;
+  user-select: none;
+}
+
+.grid-row {
+  display: grid;
+  grid-template-columns: repeat(15, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.grid-cell {
+  display: grid;
+  min-width: 0;
+  aspect-ratio: 1;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: #292929;
+  color: #ffffff;
+  font: 800 clamp(10px, 3.2vw, 18px) / 1 var(--font);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.grid-cell.is-selected {
+  background: #f4c34e;
+}
+
+.grid-cell.is-found {
+  background: var(--green);
+  color: #ffffff;
+}
+
+.game-status {
+  min-height: 28px;
+  margin: 12px 0 0;
+  color: #e0e0e0;
+  font-weight: 700;
+  text-align: center;
+}
 
 .stats {
-  margin: 20px 0;
+  margin-top: 28px;
+}
+
+.stats h2 {
+  margin-bottom: 12px;
 }
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
 }
 
 .stat {
-  background: #f4f7f4;
+  padding: 12px 6px;
   border-radius: 14px;
-  padding: 14px 8px;
+  background: #171717;
   text-align: center;
 }
 
 .stat-value {
-  font-size: 30px;
-  font-weight: 800;
   margin: 0;
+  font-size: 26px;
+  font-weight: 800;
 }
 
 .stat-label {
-  font-size: 14px;
-  color: #444444;
   margin: 4px 0 0;
+  color: #d0d0d0;
+  font-size: 13px;
 }
-
-/* ---------- Tiles ---------- */
-
-.tiles {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin: 20px 0;
-}
-
-.tile {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  background: var(--tile-empty);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  font-weight: 800;
-}
-
-.tile .marker {
-  font-size: 24px;
-  font-weight: 900;
-}
-
-.tile.green {
-  background: var(--green);
-  color: var(--green-contrast);
-}
-
-.tile.green .marker {
-  color: var(--green-contrast);
-}
-
-.tile.yellow {
-  background: var(--yellow);
-  color: var(--ink);
-}
-
-.tile.yellow .marker {
-  color: var(--ink);
-}
-
-.tile.gray {
-  background: #d9d9d9;
-  color: var(--ink);
-}
-
-.tile.gray .marker {
-  color: var(--ink);
-}
-
-.tile.empty {
-  background: var(--tile-empty);
-  color: transparent;
-}
-
-/* ---------- Jogo ---------- */
-
-.guess-row {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-#input-guess {
-  font-family: var(--font);
-  font-size: 30px;
-  font-weight: 700;
-  text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 10px;
-  border: 3px solid #999999;
-  border-radius: 16px;
-  padding: 10px 14px;
-  width: min(220px, 70vw);
-  max-width: 70vw;
-}
-
-.attempts {
-  font-size: 18px;
-  font-weight: 700;
-  text-align: center;
-  margin: 18px 0 0;
-}
-
-/* ---------- Resultado ---------- */
-
-.result-card {
-  background: var(--bg);
-  border: 3px solid var(--ink);
-  border-radius: 20px;
-  padding: 24px 16px;
-  text-align: center;
-}
-
-.result-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-top: 20px;
-}
-
-/* ---------- Utilitários ---------- */
 
 .sr-only {
   position: absolute;
   width: 1px;
   height: 1px;
-  padding: 0;
-  margin: -1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
-  border: 0;
+  clip-path: inset(50%);
 }
 
 .skip-link {
   position: absolute;
-  left: -9999px;
   top: 0;
+  left: -9999px;
+  z-index: 100;
+  padding: 12px 20px;
+  border-radius: 0 0 12px 0;
   background: var(--green);
   color: var(--green-contrast);
-  padding: 12px 20px;
-  z-index: 100;
-  border-radius: 0 0 12px 0;
 }
 
 .skip-link:focus {
@@ -323,22 +237,48 @@ h2 {
   outline-offset: 2px;
 }
 
-/* ---------- Movimento reduzido ---------- */
+@media (max-width: 360px) {
+  .app {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .panel {
+    padding: 14px;
+  }
+
+  .word-grid {
+    gap: 2px;
+    padding: 5px;
+  }
+
+  .grid-row {
+    gap: 2px;
+  }
+
+  .grid-cell {
+    border-radius: 5px;
+  }
+
+  .stats-grid {
+    gap: 6px;
+  }
+}
+
+@media (min-width: 600px) {
+  .app {
+    border-right: 1px solid #333333;
+    border-left: 1px solid #333333;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-
-/* ---------- Desktop ---------- */
-
-@media (min-width: 480px) {
-  .app {
-    border-left: 1px solid #e2e8e2;
-    border-right: 1px solid #e2e8e2;
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

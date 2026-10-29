@@ -1,74 +1,117 @@
 /* ============================================================
-   CacaPalavras — lógica do jogo
-   Estado, seleção da palavra do dia, feedback por letra,
-   validação e limite de tentativas.
+   CacaPalavras — geração da grade e validação de seleções.
    ============================================================ */
 
 const Game = {
-  status: "home",
-  categoryId: null,
-  word: null,
-  guesses: [],
-  feedbackByGuess: [],
-  attemptsUsed: 0,
-  maxAttempts: 6,
+  size: GRID_SIZE,
+  words: [],
+  grid: [],
+  foundWords: [],
+  foundCells: [],
+  status: "playing",
 
-  start(categoryId, word) {
+  start(words, seed) {
+    this.words = [...words];
+    this.foundWords = [];
+    this.foundCells = [];
     this.status = "playing";
-    this.categoryId = categoryId;
-    this.word = word;
-    this.guesses = [];
-    this.feedbackByGuess = [];
-    this.attemptsUsed = 0;
+    this.grid = Array.from({ length: this.size }, () => Array(this.size).fill(""));
+    this.placeWords(seed);
+    this.fillEmptyCells(seed);
   },
 
-  submitGuess(rawGuess) {
-    const guess = String(rawGuess || "").trim().toUpperCase();
-    if (this.status !== "playing") return { ok: false, error: "not-playing" };
-    if (!/^[A-Z]{5}$/.test(guess)) {
-      return { ok: false, error: "invalid", message: "A tentativa precisa ter exatamente 5 letras." };
+  placeWords(seed) {
+    const directions = [
+      [0, 1], [1, 0], [1, 1], [1, -1],
+      [0, -1], [-1, 0], [-1, -1], [-1, 1],
+    ];
+    let randomState = hashString(seed) || 1;
+    const random = (limit) => {
+      randomState = (randomState * 48271) % 2147483647;
+      return randomState % limit;
+    };
+
+    for (const displayWord of this.words) {
+      const word = normalizeWord(displayWord);
+      let placed = false;
+      for (let attempt = 0; attempt < 1000 && !placed; attempt += 1) {
+        const [rowStep, columnStep] = directions[random(directions.length)];
+        const row = random(this.size);
+        const column = random(this.size);
+        const endRow = row + (rowStep * (word.length - 1));
+        const endColumn = column + (columnStep * (word.length - 1));
+        if (endRow < 0 || endRow >= this.size || endColumn < 0 || endColumn >= this.size) continue;
+
+        const fits = Array.from(word).every((letter, index) => {
+          const current = this.grid[row + (rowStep * index)][column + (columnStep * index)];
+          return !current || current === letter;
+        });
+        if (!fits) continue;
+
+        Array.from(word).forEach((letter, index) => {
+          this.grid[row + (rowStep * index)][column + (columnStep * index)] = letter;
+        });
+        placed = true;
+      }
+
+      if (!placed) {
+        throw new Error(`Não foi possível posicionar a palavra "${displayWord}" na grade.`);
+      }
     }
-    const category = this.categoryId || this.getCategory();
-    const list = WORD_LISTS[category] || [];
-    if (!list.includes(guess)) {
-      return { ok: false, error: "invalid", message: "Essa não é uma palavra válida para o tema de hoje." };
-    }
-    if (this.guesses.includes(guess)) {
-      return { ok: false, error: "repeat", message: "Você já chutou essa palavra." };
-    }
-    if (this.attemptsUsed >= this.maxAttempts) {
-      return { ok: false, error: "limit", message: "Você já usou todas as tentativas." };
+  },
+
+  fillEmptyCells(seed) {
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let randomState = hashString(`${seed}-letters`) || 1;
+    const random = () => {
+      randomState = (randomState * 48271) % 2147483647;
+      return randomState % letters.length;
+    };
+    this.grid = this.grid.map((row) => row.map((letter) => letter || letters[random()]));
+  },
+
+  pathBetween(startIndex, endIndex) {
+    const startRow = Math.floor(startIndex / this.size);
+    const startColumn = startIndex % this.size;
+    const endRow = Math.floor(endIndex / this.size);
+    const endColumn = endIndex % this.size;
+    const rowDifference = endRow - startRow;
+    const columnDifference = endColumn - startColumn;
+    const distance = Math.max(Math.abs(rowDifference), Math.abs(columnDifference));
+
+    if (distance === 0 || (rowDifference !== 0 && columnDifference !== 0 && Math.abs(rowDifference) !== Math.abs(columnDifference))) {
+      return [];
     }
 
-    this.guesses.push(guess);
-    const feedback = computeFeedback(guess, this.word);
-    this.feedbackByGuess.push(feedback);
-    this.attemptsUsed += 1;
+    const rowStep = Math.sign(rowDifference);
+    const columnStep = Math.sign(columnDifference);
+    return Array.from({ length: distance + 1 }, (_, index) => (
+      ((startRow + (rowStep * index)) * this.size) + startColumn + (columnStep * index)
+    ));
+  },
 
-    const won = guess === this.word;
-    if (won) this.status = "won";
-    else if (this.attemptsUsed >= this.maxAttempts) this.status = "lost";
+  findWord(startIndex, endIndex) {
+    if (this.status !== "playing") return { found: false, reason: "complete" };
+    const path = this.pathBetween(startIndex, endIndex);
+    if (path.length < 2) return { found: false, reason: "invalid" };
 
-    return { ok: true, won };
+    const selected = path.map((index) => this.grid[Math.floor(index / this.size)][index % this.size]).join("");
+    const word = this.words.find((candidate) => {
+      const normalizedWord = normalizeWord(candidate);
+      return (normalizedWord === selected || normalizedWord === Array.from(selected).reverse().join(""))
+      && !this.foundWords.includes(candidate)
+    });
+    if (!word) return { found: false, reason: "not-found" };
+
+    this.foundWords.push(word);
+    this.foundCells = [...new Set([...this.foundCells, ...path])];
+    if (this.foundWords.length === this.words.length) this.status = "won";
+    return { found: true, word, path };
+  },
+
+  restoreProgress(foundWords = [], foundCells = []) {
+    this.foundWords = this.words.filter((word) => foundWords.includes(word));
+    this.foundCells = foundCells.filter((index) => Number.isInteger(index) && index >= 0 && index < this.size * this.size);
+    if (this.foundWords.length === this.words.length) this.status = "won";
   },
 };
-
-function computeFeedback(guess, answer) {
-  const result = new Array(5).fill("gray");
-  const remaining = {};
-  for (let i = 0; i < 5; i += 1) {
-    if (guess[i] === answer[i]) {
-      result[i] = "green";
-    } else {
-      remaining[answer[i]] = (remaining[answer[i]] || 0) + 1;
-    }
-  }
-  for (let i = 0; i < 5; i += 1) {
-    if (result[i] === "green") continue;
-    if ((remaining[guess[i]] || 0) > 0) {
-      result[i] = "yellow";
-      remaining[guess[i]] -= 1;
-    }
-  }
-  return result;
-}

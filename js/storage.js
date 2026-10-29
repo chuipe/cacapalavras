@@ -4,6 +4,7 @@
    ============================================================ */
 
 const STORAGE_KEY = "cacaPalavras.stats.v1";
+const PROGRESS_KEY = "cacaPalavras.progress.v2";
 
 const DEFAULT_STATS = {
   streak: 0,
@@ -75,6 +76,39 @@ function loadAndRecord(won) {
   const current = loadStats();
   const updated = recordResult(won, current);
   return updated;
+}
+
+function loadProgress(day) {
+  try {
+    const raw = localStorage.getItem(PROGRESS_KEY);
+    if (!raw) return { foundWords: [], foundCells: [], completed: false };
+    const progress = JSON.parse(raw);
+    if (progress.day !== day || !Array.isArray(progress.foundWords)) {
+      return { foundWords: [], foundCells: [], completed: false };
+    }
+    return {
+      foundWords: progress.foundWords.filter((word) => typeof word === "string"),
+      foundCells: Array.isArray(progress.foundCells)
+        ? progress.foundCells.filter((index) => Number.isInteger(index))
+        : [],
+      completed: progress.completed === true,
+    };
+  } catch (err) {
+    return { foundWords: [], foundCells: [], completed: false };
+  }
+}
+
+function saveProgress(day, progress) {
+  try {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify({
+      day,
+      foundWords: progress.foundWords,
+      foundCells: progress.foundCells,
+      completed: progress.completed,
+    }));
+  } catch (err) {
+    /* armazenamento indisponível: segue sem persistência */
+  }
 }
 
 function clearStats() {

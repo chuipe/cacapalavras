@@ -1,223 +1,205 @@
 /* ============================================================
-   CacaPalavras — aplicação (UI)
-   Orquestra telas, renderização de tiles, eventos e stats.
+   CacaPalavras — interface, acessibilidade e eventos.
    ============================================================ */
 
 (function () {
-  const screens = {
-    home: document.getElementById("screen-home"),
-    game: document.getElementById("screen-game"),
-    result: document.getElementById("screen-result"),
-  };
-
   const els = {
-    play: document.getElementById("btn-play"),
-    home: document.getElementById("btn-home"),
-    submit: document.getElementById("btn-submit"),
-    guess: document.getElementById("input-guess"),
-    tiles: document.getElementById("tiles"),
-    attempts: document.getElementById("attempts"),
-    feedback: document.getElementById("feedback-status"),
-    resultTitle: document.getElementById("result-title"),
-    resultAttempts: document.getElementById("result-attempts"),
-    revealTiles: document.getElementById("reveal-tiles"),
-    resultHome: document.getElementById("btn-result-home"),
-    themeChip: document.getElementById("theme-chip"),
-    gameTitle: document.getElementById("game-title"),
-    statStreak: document.getElementById("stat-streak"),
-    statBest: document.getElementById("stat-best"),
-    statWins: document.getElementById("stat-wins"),
-    statGames: document.getElementById("stat-games"),
+    wordList: document.getElementById("word-list"),
+    foundCount: document.getElementById("found-count"),
+    grid: document.getElementById("word-grid"),
+    status: document.getElementById("game-status"),
   };
 
-  let won = false;
-  let lastShareText = "";
+  const daily = getDaily();
+  let startIndex = null;
+  let dragSelection = null;
+  let activePath = [];
+  let suppressClickUntil = 0;
 
-  function show(screenName) {
-    Object.keys(screens).forEach((key) => {
-      const el = screens[key];
-      if (key === screenName) {
-        el.hidden = false;
-        el.classList.add("is-active");
+  function renderWords() {
+    els.wordList.replaceChildren();
+    Game.words.forEach((word) => {
+      const item = document.createElement("li");
+      item.className = "word-item";
+      item.textContent = word;
+      item.dataset.word = word;
+      if (Game.foundWords.includes(word)) {
+        item.classList.add("is-found");
+        item.setAttribute("aria-label", `${word}, encontrada`);
       } else {
-        el.hidden = true;
-        el.classList.remove("is-active");
+        item.setAttribute("aria-label", `${word}, ainda não encontrada`);
       }
+      els.wordList.appendChild(item);
+    });
+    els.foundCount.textContent = `${Game.foundWords.length} de ${Game.words.length}`;
+  }
+
+  function renderGrid() {
+    els.grid.replaceChildren();
+    Game.grid.forEach((row, rowIndex) => {
+      const rowElement = document.createElement("div");
+      rowElement.className = "grid-row";
+      row.forEach((letter, columnIndex) => {
+        const index = rowIndex * Game.size + columnIndex;
+        const cell = document.createElement("button");
+        cell.className = "grid-cell";
+        cell.type = "button";
+        cell.tabIndex = index === 0 ? 0 : -1;
+        cell.textContent = letter;
+        cell.dataset.index = String(index);
+        cell.setAttribute("aria-label", `Linha ${rowIndex + 1}, coluna ${columnIndex + 1}: ${letter}`);
+        rowElement.appendChild(cell);
+      });
+      els.grid.appendChild(rowElement);
+    });
+    updateGridSelection();
+  }
+
+  function updateGridSelection() {
+    els.grid.querySelectorAll(".grid-cell").forEach((cell) => {
+      const index = Number(cell.dataset.index);
+      cell.classList.toggle("is-selected", activePath.includes(index));
+      cell.classList.toggle("is-found", Game.foundCells.includes(index));
     });
   }
 
-  function letterInfo(state, letter) {
-    if (state === "green") {
-      return { marker: "✓", label: `${letter} está correta e na posição certa.` };
-    }
-    if (state === "yellow") {
-      return { marker: "⇄", label: `${letter} está na palavra, mas em outra posição.` };
-    }
-    return { marker: "✕", label: `${letter} não está na palavra.` };
+  function showPath(start, end) {
+    activePath = Game.pathBetween(start, end);
+    updateGridSelection();
   }
 
-  function createTile(char, state) {
-    const tile = document.createElement("div");
-    tile.className = `tile ${state}`;
-    const letter = document.createElement("span");
-    letter.className = "letter";
-    letter.textContent = char;
-    const marker = document.createElement("span");
-    marker.className = "marker";
-    marker.textContent = letterInfo(state, char).marker;
-    tile.appendChild(letter);
-    tile.appendChild(marker);
-    tile.setAttribute("aria-label", letterInfo(state, char).label);
-    return tile;
+  function finishGame() {
+    saveProgress(daily.key, { foundWords: Game.foundWords, foundCells: Game.foundCells, completed: true });
+    loadAndRecord(true);
+    els.status.textContent = "Parabéns! Você encontrou todas as palavras de hoje. Volte amanhã para um novo desafio.";
+    els.grid.setAttribute("aria-label", "Desafio concluído. Todas as palavras foram encontradas.");
   }
 
-  function renderTiles(container, guess, feedback) {
-    container.innerHTML = "";
-    if (!guess || !feedback) {
-      for (let i = 0; i < 5; i += 1) container.appendChild(createTile("", "empty"));
+  function selectCells(start, end) {
+    const result = Game.findWord(start, end);
+    activePath = result.path || [];
+    if (result.found) {
+      saveProgress(daily.key, {
+        foundWords: Game.foundWords,
+        foundCells: Game.foundCells,
+        completed: Game.status === "won",
+      });
+      renderWords();
+      els.status.textContent = Game.status === "won"
+        ? `Você encontrou ${result.word}! ${Game.words.length} de ${Game.words.length}.`
+        : `${result.word} encontrada! ${Game.foundWords.length} de ${Game.words.length} peças.`;
+      if (Game.status === "won") finishGame();
+    } else if (result.reason === "not-found") {
+      els.status.textContent = "Essa seleção não forma uma palavra da lista. Tente outra.";
+    } else if (result.reason === "invalid") {
+      els.status.textContent = "Selecione as letras em uma linha reta.";
+    }
+
+    startIndex = null;
+    activePath = [];
+    updateGridSelection();
+  }
+
+  function cellFromPoint(x, y) {
+    const element = document.elementFromPoint(x, y);
+    const cell = element && element.closest(".grid-cell");
+    return cell && els.grid.contains(cell) ? Number(cell.dataset.index) : null;
+  }
+
+  function handlePointerDown(event) {
+    const cell = event.target.closest(".grid-cell");
+    if (!cell || Game.status !== "playing") return;
+    const index = Number(cell.dataset.index);
+    dragSelection = { pointerId: event.pointerId, start: index, end: index, moved: false };
+    showPath(index, index);
+  }
+
+  function handlePointerMove(event) {
+    if (!dragSelection || dragSelection.pointerId !== event.pointerId) return;
+    const index = cellFromPoint(event.clientX, event.clientY);
+    if (index === null || index === dragSelection.end) return;
+    dragSelection.end = index;
+    dragSelection.moved = true;
+    showPath(dragSelection.start, index);
+  }
+
+  function handlePointerUp(event) {
+    if (!dragSelection || dragSelection.pointerId !== event.pointerId) return;
+    const selection = dragSelection;
+    dragSelection = null;
+    if (selection.moved) {
+      suppressClickUntil = Date.now() + 500;
+      selectCells(selection.start, selection.end);
+    } else if (startIndex !== null) {
+      showPath(startIndex, startIndex);
+    } else {
+      activePath = [];
+      updateGridSelection();
+    }
+  }
+
+  function handleCellClick(event) {
+    const cell = event.target.closest(".grid-cell");
+    if (!cell || Date.now() < suppressClickUntil || Game.status !== "playing") return;
+    const index = Number(cell.dataset.index);
+    if (startIndex === null) {
+      startIndex = index;
+      showPath(index, index);
+      els.status.textContent = "Agora selecione a última letra da palavra.";
       return;
     }
-    for (let i = 0; i < 5; i += 1) {
-      const char = guess[i];
-      if (char) {
-        container.appendChild(createTile(char, feedback[i]));
-      } else {
-        container.appendChild(createTile("", "empty"));
-      }
-    }
-  }
-
-  function renderReveal(container, word) {
-    container.innerHTML = "";
-    for (let i = 0; i < 5; i += 1) {
-      const tile = document.createElement("div");
-      tile.className = "tile green";
-      const letter = document.createElement("span");
-      letter.className = "letter";
-      letter.textContent = word[i];
-      const marker = document.createElement("span");
-      marker.className = "marker";
-      marker.textContent = "✓";
-      tile.appendChild(letter);
-      tile.appendChild(marker);
-      tile.setAttribute("aria-label", `${word[i]} está correta e na posição certa.`);
-      container.appendChild(tile);
-    }
-  }
-
-  function renderStats(stats) {
-    if (els.statStreak) els.statStreak.textContent = String(effectiveStreak(stats));
-    if (els.statBest) els.statBest.textContent = String(stats.bestStreak);
-    if (els.statWins) els.statWins.textContent = String(stats.wins);
-    if (els.statGames) els.statGames.textContent = String(stats.gamesPlayed);
-  }
-
-  function renderHome() {
-    const daily = getDaily();
-    els.themeChip.textContent = `${daily.theme.emoji} ${daily.theme.name}`;
-    els.themeChip.style.backgroundColor = daily.theme.color;
-    els.gameTitle.textContent = `${daily.theme.emoji} ${daily.theme.name}`;
-    const stats = loadStats();
-    renderStats(stats);
-  }
-
-  function handleSubmit() {
-    const guess = els.guess.value;
-    const result = Game.submitGuess(guess);
-    if (!result.ok) {
-      els.feedback.textContent = result.message || "Não foi possível validar o palpite.";
+    if (startIndex === index) {
+      startIndex = null;
+      activePath = [];
+      updateGridSelection();
+      els.status.textContent = "Seleção cancelada.";
       return;
     }
-
-    won = result.won;
-    attemptsUsed = Game.attemptsUsed;
-
-    const lastGuess = Game.guesses[Game.guesses.length - 1];
-    const lastFeedback = Game.feedbackByGuess[Game.feedbackByGuess.length - 1];
-    renderTiles(els.tiles, lastGuess, lastFeedback);
-    els.attempts.textContent = `${Game.attemptsUsed} de ${Game.maxAttempts} tentativas`;
-
-    const wonNow = Game.status === "won";
-    const lostNow = Game.status === "lost";
-
-    if (wonNow || lostNow) {
-      const stats = loadAndRecord(wonNow);
-      renderStats(stats);
-      els.resultTitle.textContent = wonNow ? "Você acertou!" : "Não foi desta vez!";
-      els.resultAttempts.textContent = `Você usou ${Game.attemptsUsed} de ${Game.maxAttempts} tentativas.`;
-      renderReveal(els.revealTiles, Game.word);
-      lastShareText = wonNow
-        ? `Acabei de jogar hoje e usei ${Game.attemptsUsed} tentativas!`
-        : `Hoje eu joguei no CacaPalavras e não descobri a palavra!`;
-      show("result");
-    }
-
-    if (!wonNow && !lostNow) {
-      els.guess.value = "";
-      renderTiles(els.tiles, "", null);
-      els.attempts.textContent = `${Game.attemptsUsed} de ${Game.maxAttempts} tentativas`;
-      els.guess.focus();
-    }
+    selectCells(startIndex, index);
   }
 
-  async function copyResult() {
-    const text = lastShareText;
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
+  function handleKeyDown(event) {
+    const cell = event.target.closest(".grid-cell");
+    if (!cell) return;
+    const index = Number(cell.dataset.index);
+    const row = Math.floor(index / Game.size);
+    const column = index % Game.size;
+    const moves = {
+      ArrowUp: row > 0 ? index - Game.size : null,
+      ArrowDown: row < Game.size - 1 ? index + Game.size : null,
+      ArrowLeft: column > 0 ? index - 1 : null,
+      ArrowRight: column < Game.size - 1 ? index + 1 : null,
+    };
+    if (Object.hasOwn(moves, event.key)) {
+      event.preventDefault();
+      const next = moves[event.key];
+      const nextCell = next === null ? null : els.grid.querySelector(`[data-index="${next}"]`);
+      if (nextCell) {
+        cell.tabIndex = -1;
+        nextCell.tabIndex = 0;
+        nextCell.focus();
       }
-      els.feedback.textContent = "Resultado copiado!";
-    } catch (err) {
-      els.feedback.textContent = "Não foi possível copiar.";
     }
-  }
-
-  function startGame() {
-    const daily = getDaily();
-    Game.start(daily.theme.id, daily.word);
-    won = false;
-    attemptsUsed = 0;
-    els.guess.value = "";
-    renderTiles(els.tiles, "", null);
-    els.attempts.textContent = `0 de ${Game.maxAttempts} tentativas`;
-    els.feedback.textContent = "";
-    show("game");
-    els.guess.focus();
-  }
-
-  function goHome() {
-    Game.status = "home";
-    show("home");
-    renderHome();
-  }
-
-  function bindEvents() {
-    els.play.addEventListener("click", startGame);
-    els.home.addEventListener("click", goHome);
-    els.submit.addEventListener("click", handleSubmit);
-    els.resultHome.addEventListener("click", goHome);
-    els.guess.addEventListener("input", () => {
-      els.guess.value = els.guess.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 5);
-    });
-    els.guess.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        handleSubmit();
-      }
-    });
   }
 
   function init() {
-    bindEvents();
-    renderHome();
-    show("home");
+    const progress = loadProgress(daily.key);
+    Game.start(daily.words, daily.key);
+    Game.restoreProgress(progress.foundWords, progress.foundCells);
+    renderWords();
+    renderGrid();
+    if (Game.status === "won" || progress.completed) {
+      Game.status = "won";
+      els.status.textContent = "Você já encontrou todas as palavras de hoje. Volte amanhã para um novo desafio.";
+      els.grid.setAttribute("aria-label", "Desafio concluído. Todas as palavras foram encontradas.");
+    }
+
+    els.grid.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("pointermove", handlePointerMove);
+    document.addEventListener("pointerup", handlePointerUp);
+    document.addEventListener("pointercancel", handlePointerUp);
+    els.grid.addEventListener("click", handleCellClick);
+    els.grid.addEventListener("keydown", handleKeyDown);
   }
 
   document.addEventListener("DOMContentLoaded", init);
